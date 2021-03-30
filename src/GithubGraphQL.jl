@@ -3,46 +3,80 @@ module GithubGraphQLExample
 using HTTP
 using JSON
 
-const MyQueryResult_viewer = @NamedTuple begin
-  login::AbstractString
-end
+include("generated/types.jl")
 
-const MyQueryResult = @NamedTuple begin
-  viewer::MyQueryResult_viewer
-end
-
-function parse_nt(T::Type, s)::T
+function parse_nt(T::Any, s)::T
   s
+end
+
+function parse_nt(::Type{Union{T2, Nothing}}, vec::Vector) where T2
+  @info "parsing vector"
+
+  [map(v -> parse_nt(eltype(T2), v), vec)...]
 end
 
 
 function parse_nt(T::Type, d::Dict)::T
+  @info "parsing dict without union"
+
   T((parse_nt(fieldtype(T, t), d[String(t)]) for t in fieldnames(T)))
+end
+
+function parse_nt(::Type{Union{T, Nothing}}, d::Dict) where {T} 
+  @info "parsing dict"
+  @info T
+  T((haskey(d, String(t)) ? parse_nt(fieldtype(T, t), d[String(t)]) : nothing for t in fieldnames(T)) )
 end
 
 
 
+# function parse_nt(T::Any, d::Dict)::T
+#   @info d
+#   T((parse_nt(fieldtype(T, t), d[String(t)]) for t in fieldnames(T)))
+# end
+
+
+macro gql_str(str::String)
+  # str is the query to turn into a function call
+  return str
+end
+
+
 function get_current_user()
 
-  MY_QUERY = """query MyQuery {
+  MY_QUERY = gql"""query CurrentUser {
     viewer {
       login
+      name
+      repositories(first: 10) {
+        nodes {
+          createdAt
+          id
+          name
+        }
+      }
+      avatarUrl
     }
-  }"""
+  }
+  
+  """
 
   r = HTTP.request(
       "POST",
       "https://api.github.com/graphql";
-      verbose=3,
       headers=Dict("Authorization" => "Bearer 766ce7a7504c2b3304ed591df5aaf62291a1ecaa"),
       body=JSON.json(Dict(
           "query" => MY_QUERY
-  ))
+      ))
   )
 
-  dict = JSON.parse(String(r.body))
+  body = String(r.body)
 
-  res = parse_nt(MyQueryResult, dict["data"])
+  @info body
+
+  dict = JSON.parse(body)
+
+  res = parse_nt(CurrentUserResult, dict["data"])
 
   login = res.viewer.login
 
@@ -50,7 +84,7 @@ function get_current_user()
 end
 
 
-get_current_user()
+return get_current_user()
 
 
 
