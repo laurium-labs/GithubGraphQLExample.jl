@@ -10,30 +10,17 @@ function parse_nt(T::Any, s)::T
 end
 
 function parse_nt(::Type{Union{T2, Nothing}}, vec::Vector) where T2
-  @info "parsing vector"
-
   [map(v -> parse_nt(eltype(T2), v), vec)...]
 end
 
 
 function parse_nt(T::Type, d::Dict)::T
-  @info "parsing dict without union"
-
   T((parse_nt(fieldtype(T, t), d[String(t)]) for t in fieldnames(T)))
 end
 
 function parse_nt(::Type{Union{T, Nothing}}, d::Dict) where {T} 
-  @info "parsing dict"
-  @info T
   T((haskey(d, String(t)) ? parse_nt(fieldtype(T, t), d[String(t)]) : nothing for t in fieldnames(T)) )
 end
-
-
-
-# function parse_nt(T::Any, d::Dict)::T
-#   @info d
-#   T((parse_nt(fieldtype(T, t), d[String(t)]) for t in fieldnames(T)))
-# end
 
 
 macro gql_str(str::String)
@@ -42,9 +29,64 @@ macro gql_str(str::String)
 end
 
 
+function gql_query(query::String, T::Type, variables::Union{Nothing, NamedTuple}=nothing)::T
+  body = Dict(
+          "query" => query
+      )
+
+  if(!isnothing(variables))
+    body["variables"] = JSON.json(variables)
+  end
+
+  r = HTTP.request(
+      "POST",
+      "https://api.github.com/graphql";
+      headers=Dict("Authorization" => "Bearer $(ENV["github_access_token"])"),
+      body=JSON.json(body)
+  )
+
+  body = String(r.body)
+
+  dict = JSON.parse(body)
+
+  res = parse_nt(T, dict["data"])
+
+  return res
+end
+
+
+function get_companies()
+  QUERY = gql"""query Companies {
+    viewer {
+      avatarUrl
+      organizations(first: 10) {
+        nodes {
+          createdAt
+          avatarUrl
+          id
+          name
+          repositories(first: 10) {
+            nodes {
+              id
+              issues {
+                totalCount
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+    
+  """
+
+  return gql_query(QUERY, CompaniesResult)
+end
+
+
 function get_current_user()
 
-  MY_QUERY = gql"""query CurrentUser {
+  QUERY = gql"""query CurrentUser($followers: Int!) {
     viewer {
       login
       name
@@ -56,57 +98,23 @@ function get_current_user()
         }
       }
       avatarUrl
+      following(first: $followers) {
+        nodes {
+          avatarUrl
+          bio
+          company
+          name
+        }
+      }
     }
-  }
-  
+  }  
   """
 
-  r = HTTP.request(
-      "POST",
-      "https://api.github.com/graphql";
-      headers=Dict("Authorization" => "Bearer 766ce7a7504c2b3304ed591df5aaf62291a1ecaa"),
-      body=JSON.json(Dict(
-          "query" => MY_QUERY
-      ))
-  )
+  return gql_query(QUERY, CurrentUserResult, CurrentUserVariables(10))
 
-  body = String(r.body)
-
-  @info body
-
-  dict = JSON.parse(body)
-
-  res = parse_nt(CurrentUserResult, dict["data"])
-
-  login = res.viewer.login
-
-  return res
 end
 
 
 return get_current_user()
-
-
-
-
-# Parse result into code-generated type.
-
-# parse_to_nt = function(T, d)
-#   @info "hi"
-#   T((parse_to_nt(fieldtype(T, t), d[String(t)]) for t in fieldnames(T)))
-# end
-
-# parse_to_nt = function(T::Type, d::AbstractString)
-#   d
-# end
-
-# dict = JSON.parse(String(r.body))
-
-# res = parse_to_nt(MyQueryResult, dict)
-
-# @info "here"
-
-# return res
-
 
 end # module
