@@ -4,5 +4,6 @@ authors = ["Mark Halonen <halonen.mark@gmail.com>"]
 version = "0.1.0"
 
 [deps]
+GraphQLCodegen = "3c34e5fb-3c4e-40b1-8aed-0e0bba006cbc"
 HTTP = "cd3eb016-35fb-5094-929b-558a96fad6f3"
 JSON = "682c06a0-de6a-54ab-a142-c8b1cf79cde6"

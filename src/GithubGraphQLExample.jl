@@ -110,11 +110,15 @@ function get_current_user()
   }  
   """
 
-  return gql_query(QUERY, CurrentUserResult, CurrentUserVariables(10))
+  res = gql_query(QUERY, CurrentUserResult, CurrentUserVariables(10))
+
+  loginVal = res.viewer.login
+
+  return res
 
 end
 
+  return (get_current_user(), get_companies())
 
-return get_current_user()
 
 end # module
