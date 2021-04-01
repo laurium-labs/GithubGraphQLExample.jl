@@ -8,3 +8,13 @@ If you change a GraphQL query, you need to re-run code generation: `graphql-juli
 
 If you do not have `graphql-julia-codegen` see https://github.com/laurium-labs/graphql-julia-codegen for install instructions.
 
+## How to run
+
+`julia --project`
+
+```julia
+julia> gh = include("src/GithubGraphQLExample.jl")
+Main.GithubGraphQLExample
+
+julia> user = gh.get_current_user()
+```
