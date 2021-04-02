@@ -24,3 +24,6 @@ Main.GithubGraphQLExample
 
 julia> user = gh.get_current_user()
 ```
+
+
+For a video walkthrough of this codebase, see https://vimeo.com/530875067
