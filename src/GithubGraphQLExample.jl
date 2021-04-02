@@ -19,7 +19,7 @@ function gql_query(query::String, T::Type, variables::Union{Nothing, NamedTuple}
   r = HTTP.request(
       "POST",
       "https://api.github.com/graphql";
-      headers=Dict("Authorization" => "Bearer $(ENV["github_access_token"])"),
+      headers=Dict("Authorization" => "Bearer $(ENV["github_access_token"])", "Content-Type" => "application/json"),
       body=JSON.json(body)
   )
 
